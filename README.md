@@ -15,6 +15,28 @@ A scenario config (town, weather, traffic density, sensor rig, frame count) is s
 - **Data-lake dashboard** — episodes, frames, storage footprint, frames-by-sensor, episodes-by-weather/town, and ingest throughput
 - Full-bucket file browser + upload, a FastAPI backend with strict layered architecture, and agent-optimized docs
 
+## What it looks like
+
+**Dashboard** — episode, sensor-frame, storage, and scenario counts, a 7-day ingest-throughput chart, recent episodes, and frames-by-sensor / episodes-by-weather / episodes-by-town breakdowns.
+
+![Dashboard with episode, frame, storage, and scenario metrics and ingest charts](docs/images/dashboard.png)
+
+**Scenarios** — the reusable CARLA capture configs (town, weather, traffic, FPS, frame count, sensor rig) that drive every capture.
+
+![Scenarios list of reusable CARLA capture configs](docs/images/scenarios.png)
+
+**Scenario detail** — a scenario's full capture config plus the episodes captured from it, with Run / Edit / Delete actions.
+
+![Scenario detail showing capture config and captured episodes](docs/images/scenario-detail.png)
+
+**Episodes** — captured multi-sensor driving datasets in the lake, with scenario, town/weather, frame count, size, source, and status.
+
+![Episodes list of captured multi-sensor datasets](docs/images/episodes.png)
+
+**Episode detail** — per-episode metadata and frames-by-sensor, the PyTorch `DataLoader` serving command, bounding-box annotations, and a B2-scoped sensor-frame browser.
+
+![Episode detail with metadata, dataset serving, annotations, and sensor-frame browser](docs/images/episode-detail.png)
+
 ## Quick Start
 
 You need: Node.js >= 20, pnpm >= 9, Python >= 3.12, and a free **[Backblaze B2 account](https://www.backblaze.com/sign-up/ai-cloud-storage?utm_source=github&utm_medium=referral&utm_campaign=ai_artifacts&utm_content=b2ai-carla-sensor-data-lake)**. A CARLA server is only needed to *run* a scenario (see [Running against CARLA](#running-against-carla)); everything else — manage, browse, and serve datasets — works on any host against data already in B2.
