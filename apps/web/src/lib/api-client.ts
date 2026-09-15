@@ -1,11 +1,18 @@
 import type {
+  DailyFrameCount,
   DailyUploadCount,
+  EpisodeDetail,
+  EpisodeMetadata,
+  EpisodeSummary,
   FileMetadata,
   FileMetadataDetail,
   FileUploadResponse,
+  LakeStats,
   PresignUploadResponse,
+  Scenario,
+  ScenarioInput,
   UploadStats,
-} from "@vibe-coding-starter-kit/shared";
+} from "@carla-sensor-data-lake/shared";
 
 // Single-origin deploys (Vercel `services`: one project serving web + API) put
 // the API under /api on the same origin, so no NEXT_PUBLIC_API_URL is needed —
@@ -17,12 +24,26 @@ export const API_BASE =
   (process.env.NODE_ENV === "production" ? "/api" : "http://localhost:8000");
 
 type ApiClientRoute = {
-  method: "delete" | "get" | "post";
+  method: "delete" | "get" | "post" | "put";
   path: string;
 };
 
 export const API_CLIENT_ROUTES = {
   health: { method: "get", path: "/health" },
+  // --- Scenarios (primary entity: full CRUD + run) ---
+  scenarios: { method: "get", path: "/scenarios" },
+  scenarioCreate: { method: "post", path: "/scenarios" },
+  scenario: { method: "get", path: "/scenarios/{scenario_id}" },
+  scenarioUpdate: { method: "put", path: "/scenarios/{scenario_id}" },
+  scenarioDelete: { method: "delete", path: "/scenarios/{scenario_id}" },
+  scenarioRun: { method: "post", path: "/scenarios/{scenario_id}/run" },
+  // --- Episodes (derived artifact: read + delete) ---
+  episodes: { method: "get", path: "/episodes" },
+  episode: { method: "get", path: "/episodes/{episode_id}" },
+  episodeDelete: { method: "delete", path: "/episodes/{episode_id}" },
+  // --- Lake dashboard ---
+  lakeStats: { method: "get", path: "/lake/stats" },
+  lakeIngest: { method: "get", path: "/lake/ingest" },
   files: { method: "get", path: "/files" },
   fileStats: { method: "get", path: "/files/stats" },
   uploadActivity: { method: "get", path: "/files/stats/activity" },
@@ -201,6 +222,95 @@ function isLegacyPathFallbackSafe(
 export async function getHealth() {
   return apiFetch<{ status: string; b2_connected: boolean }>(
     API_CLIENT_ROUTES.health.path
+  );
+}
+
+/** Substitute a single `{param}` placeholder in a route path template. */
+function withId(template: string, param: string, id: string): string {
+  return template.replace(`{${param}}`, encodeURIComponent(id));
+}
+
+function jsonBody(payload: unknown, method: string): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  };
+}
+
+// --- Scenarios ---
+
+export async function getScenarios() {
+  return apiFetch<Scenario[]>(API_CLIENT_ROUTES.scenarios.path);
+}
+
+export async function getScenario(id: string) {
+  return apiFetch<Scenario>(
+    withId(API_CLIENT_ROUTES.scenario.path, "scenario_id", id)
+  );
+}
+
+export async function createScenario(input: ScenarioInput) {
+  return apiFetch<Scenario>(
+    API_CLIENT_ROUTES.scenarioCreate.path,
+    jsonBody(input, API_CLIENT_ROUTES.scenarioCreate.method.toUpperCase())
+  );
+}
+
+export async function updateScenario(id: string, input: ScenarioInput) {
+  return apiFetch<Scenario>(
+    withId(API_CLIENT_ROUTES.scenarioUpdate.path, "scenario_id", id),
+    jsonBody(input, API_CLIENT_ROUTES.scenarioUpdate.method.toUpperCase())
+  );
+}
+
+export async function deleteScenario(id: string) {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    withId(API_CLIENT_ROUTES.scenarioDelete.path, "scenario_id", id),
+    { method: API_CLIENT_ROUTES.scenarioDelete.method.toUpperCase() }
+  );
+}
+
+/**
+ * Drive the real CARLA server for a scenario. On a host without the
+ * platform-restricted `carla` wheel (or with no reachable server) the API
+ * answers 503 with an actionable message, which surfaces here as an ApiError.
+ */
+export async function runScenario(id: string) {
+  return apiFetch<EpisodeMetadata>(
+    withId(API_CLIENT_ROUTES.scenarioRun.path, "scenario_id", id),
+    { method: API_CLIENT_ROUTES.scenarioRun.method.toUpperCase() }
+  );
+}
+
+// --- Episodes ---
+
+export async function getEpisodes() {
+  return apiFetch<EpisodeSummary[]>(API_CLIENT_ROUTES.episodes.path);
+}
+
+export async function getEpisode(id: string) {
+  return apiFetch<EpisodeDetail>(
+    withId(API_CLIENT_ROUTES.episode.path, "episode_id", id)
+  );
+}
+
+export async function deleteEpisode(id: string) {
+  return apiFetch<{ deleted: boolean; id: string; objects: number }>(
+    withId(API_CLIENT_ROUTES.episodeDelete.path, "episode_id", id),
+    { method: API_CLIENT_ROUTES.episodeDelete.method.toUpperCase() }
+  );
+}
+
+// --- Lake dashboard ---
+
+export async function getLakeStats() {
+  return apiFetch<LakeStats>(API_CLIENT_ROUTES.lakeStats.path);
+}
+
+export async function getIngestActivity(days = 7) {
+  return apiFetch<DailyFrameCount[]>(
+    `${API_CLIENT_ROUTES.lakeIngest.path}?days=${days}`
   );
 }
 

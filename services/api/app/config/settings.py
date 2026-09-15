@@ -2,11 +2,24 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    b2_endpoint: str = "https://s3.us-west-004.backblazeb2.com"
-    b2_key_id: str = ""
+    # --- Backblaze B2 (S3-compatible API) ---
+    # Standardized B2_* names. The S3 endpoint is DERIVED from the region (see
+    # `b2_endpoint` below) so no region string is ever hardcoded in source.
+    b2_application_key_id: str = ""
     b2_application_key: str = ""
     b2_bucket_name: str = ""
-    b2_public_url: str = ""
+    # e.g. "us-west-004" — taken from your bucket's endpoint in the B2 console.
+    b2_region: str = ""
+    # Optional public base URL for objects in a public bucket (no trailing slash).
+    b2_public_url_base: str = ""
+
+    # --- CARLA simulator (NOT secrets) ---
+    # The app's writer/browse process talks to a user-hosted CARLA server over
+    # these. They have safe localhost defaults; a run only reaches out when the
+    # `carla` client library is installed on the host (see service/carla_runner).
+    carla_host: str = "localhost"
+    carla_port: int = 2000
+    carla_timeout: float = 20.0
 
     api_port: int = 8000
     # Interactive API docs (/docs, /redoc, /openapi.json). On by default for
@@ -70,6 +83,22 @@ class Settings(BaseSettings):
     download_count_file: str = ".data/download_count.json"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def b2_endpoint(self) -> str:
+        """S3 endpoint derived from the region — never a hardcoded region literal.
+
+        Returns "" when the region is unset so startup validation (main.py) can
+        report a missing B2_REGION instead of building a malformed endpoint.
+        """
+        if not self.b2_region:
+            return ""
+        return f"https://s3.{self.b2_region}.backblazeb2.com"
+
+    @property
+    def b2_public_url(self) -> str:
+        """Back-compat alias for the public URL base (no trailing slash)."""
+        return self.b2_public_url_base.rstrip("/")
 
     @property
     def cors_origins(self) -> list[str]:

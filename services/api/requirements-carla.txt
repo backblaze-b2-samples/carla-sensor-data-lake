@@ -1,0 +1,17 @@
+# CARLA simulation engine — OPTIONAL, install ONLY on a supported host.
+#
+# The `carla` PyPI wheel supports Linux/Windows on CPython <= 3.10 only — there
+# is NO macOS/arm64 wheel and NO Python 3.12 support. These deps are therefore
+# DELIBERATELY excluded from requirements.txt / requirements.lock: adding them
+# there would break `pnpm run setup`, the venv install, and every `pnpm verify`
+# gate on the team's macOS dev machine.
+#
+# Install on a Linux/GPU host that also runs a CARLA server (see
+# docs/features/simulation-runner.md):
+#   python3.10 -m venv .venv-carla && . .venv-carla/bin/activate
+#   pip install -r services/api/requirements.txt -r services/api/requirements-carla.txt
+#
+# The lake's manage/browse/serve side needs none of this — it runs on any host
+# against data already in B2.
+carla==0.9.15
+numpy>=1.23,<2

@@ -36,18 +36,39 @@ import {
   fileListTruncationNotice,
 } from "@/lib/file-list-limit";
 import { ancestorPaths, takePreviewKeyFromUrl } from "@/lib/preview-deep-link";
-import type { FileMetadata } from "@vibe-coding-starter-kit/shared";
+import type { FileMetadata } from "@carla-sensor-data-lake/shared";
 
-export function FileBrowser() {
+interface FileBrowserProps {
+  /** Restrict the listing to this key prefix (e.g. "episodes/<id>/"). */
+  prefix?: string;
+  /** Root the tree below this prefix so it shows relative paths. */
+  stripPrefix?: string;
+  title?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  /** Show the "Upload files" call to action in the empty state. */
+  showUploadCta?: boolean;
+}
+
+export function FileBrowser({
+  prefix = "",
+  stripPrefix = "",
+  title = "Recent Files",
+  emptyTitle = "This bucket is empty",
+  emptyDescription = "Upload some files to see them listed here.",
+  showUploadCta = true,
+}: FileBrowserProps = {}) {
+  const isScoped = prefix !== "";
   const {
     data: files = [],
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useFiles("", FILE_LIST_LIMIT);
-  // Only used to say how much of the bucket this page is *not* showing.
-  const { data: stats } = useFileStats();
+  } = useFiles(prefix, FILE_LIST_LIMIT);
+  // Only used on the whole-bucket view to say how much it is *not* showing;
+  // meaningless for a scoped prefix (bucket totals != this prefix's totals).
+  const { data: stats } = useFileStats({ enabled: !isScoped });
   const deleteMutation = useDeleteFile();
   const downloadMutation = useDownloadUrl();
   const downloadingKey = downloadMutation.isPending
@@ -59,7 +80,7 @@ export function FileBrowser() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<FileMetadata | null>(null);
 
-  const tree = useMemo(() => buildFileTree(files), [files]);
+  const tree = useMemo(() => buildFileTree(files, stripPrefix), [files, stripPrefix]);
 
   // Auto-expand the first time data arrives, deep enough that actual file rows
   // are on screen (see `initialExpandedPaths`) — expanding only the top level
@@ -161,7 +182,7 @@ export function FileBrowser() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 space-y-0">
           {/* Not "All Files": the endpoint returns the newest 100 objects. */}
-          <CardTitle className="card-title">Recent Files</CardTitle>
+          <CardTitle className="card-title">{title}</CardTitle>
           <Button
             variant="outline"
             size="sm"
@@ -199,15 +220,17 @@ export function FileBrowser() {
           ) : files.length === 0 ? (
             <EmptyState
               icon={FolderOpen}
-              title="This bucket is empty"
-              description="Upload some files to see them listed here."
+              title={emptyTitle}
+              description={emptyDescription}
               action={
-                <Button asChild size="sm">
-                  <Link href="/upload">
-                    <Upload aria-hidden="true" className="h-3.5 w-3.5" />
-                    Upload files
-                  </Link>
-                </Button>
+                showUploadCta ? (
+                  <Button asChild size="sm">
+                    <Link href="/upload">
+                      <Upload aria-hidden="true" className="h-3.5 w-3.5" />
+                      Upload files
+                    </Link>
+                  </Button>
+                ) : undefined
               }
               className="px-4"
             />

@@ -8,19 +8,31 @@ import {
 } from "@tanstack/react-query";
 import {
   ApiError,
+  createScenario,
+  deleteEpisode,
   deleteFile,
+  deleteScenario,
   getDownloadUrl,
+  getEpisode,
+  getEpisodes,
   getFileDetail,
   getFiles,
   getFileStats,
   getHealth,
+  getIngestActivity,
+  getLakeStats,
   getPreviewUrl,
+  getScenario,
+  getScenarios,
   getUploadActivity,
+  runScenario,
+  updateScenario,
 } from "@/lib/api-client";
 import type {
   FileMetadata,
   FileMetadataDetail,
-} from "@vibe-coding-starter-kit/shared";
+  ScenarioInput,
+} from "@carla-sensor-data-lake/shared";
 
 // Single source of truth for query keys. Keep these tightly scoped so that
 // invalidating "files" doesn't blow away unrelated caches, and so an IDE
@@ -35,6 +47,12 @@ export const qk = {
   preview: (key: string) => [...qk.all, "preview", key] as const,
   detail: (key: string) => [...qk.all, "detail", key] as const,
   health: () => [...qk.all, "health"] as const,
+  scenarios: () => [...qk.all, "scenarios"] as const,
+  scenario: (id: string) => [...qk.all, "scenario", id] as const,
+  episodes: () => [...qk.all, "episodes"] as const,
+  episode: (id: string) => [...qk.all, "episode", id] as const,
+  lakeStats: () => [...qk.all, "lake", "stats"] as const,
+  ingest: (days: number) => [...qk.all, "lake", "ingest", days] as const,
 };
 
 export type Health = Awaited<ReturnType<typeof getHealth>>;
@@ -167,5 +185,112 @@ export function useDeleteFile() {
       dropDeletedFileFromCache(qc, fileKey);
       qc.invalidateQueries({ queryKey: qk.all });
     },
+  });
+}
+
+// --- Scenarios (primary entity) ---
+
+export function useScenarios({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.scenarios(),
+    queryFn: getScenarios,
+    enabled,
+  });
+}
+
+export function useScenario(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.scenario(id ?? ""),
+    queryFn: () => getScenario(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useCreateScenario() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ScenarioInput) => createScenario(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.scenarios() }),
+  });
+}
+
+export function useUpdateScenario(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ScenarioInput) => updateScenario(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.scenarios() });
+      qc.invalidateQueries({ queryKey: qk.scenario(id) });
+    },
+  });
+}
+
+export function useDeleteScenario() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteScenario(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.scenarios() }),
+  });
+}
+
+/**
+ * Run a scenario against the real CARLA server. On a host without CARLA the API
+ * returns 503 and this mutation rejects with that ApiError — the caller shows
+ * the actionable message. On success the episode lists/stats are invalidated.
+ */
+export function useRunScenario() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => runScenario(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.episodes() });
+      qc.invalidateQueries({ queryKey: qk.lakeStats() });
+    },
+  });
+}
+
+// --- Episodes (derived artifact) ---
+
+export function useEpisodes({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.episodes(),
+    queryFn: getEpisodes,
+    enabled,
+  });
+}
+
+export function useEpisode(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.episode(id ?? ""),
+    queryFn: () => getEpisode(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useDeleteEpisode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteEpisode(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.episodes() });
+      qc.invalidateQueries({ queryKey: qk.lakeStats() });
+    },
+  });
+}
+
+// --- Lake dashboard ---
+
+export function useLakeStats({ enabled = true }: QueryGate = {}) {
+  return useQuery({
+    queryKey: qk.lakeStats(),
+    queryFn: getLakeStats,
+    enabled,
+  });
+}
+
+export function useIngestActivity(days = 7) {
+  return useQuery({
+    queryKey: qk.ingest(days),
+    queryFn: () => getIngestActivity(days),
   });
 }

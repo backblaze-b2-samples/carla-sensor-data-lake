@@ -43,14 +43,15 @@ def get_s3_client():
     return boto3.client(
         "s3",
         endpoint_url=settings.b2_endpoint,
-        aws_access_key_id=settings.b2_key_id,
+        region_name=settings.b2_region,
+        aws_access_key_id=settings.b2_application_key_id,
         aws_secret_access_key=settings.b2_application_key,
         config=Config(
             connect_timeout=5,
             read_timeout=30,
             retries={"mode": "standard", "total_max_attempts": 3},
             signature_version="s3v4",
-            user_agent_extra="b2ai-oss-start",
+            user_agent_extra="b2ai-carla-sensor-data-lake",
         ),
     )
 

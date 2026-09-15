@@ -2,11 +2,13 @@
 # Feature: File Upload
 
 ## Purpose
-Upload files from the browser **directly to Backblaze B2** with real-time
-progress tracking. The bytes never pass through the API, so uploads are not
-capped by Vercel's ~4.5 MB Function payload limit — the same flow handles up to
-`max_file_size` (100 MB default) on local, Railway, and Vercel alike, and is a
-direct showcase of B2 as the storage layer.
+Manual ingest into the lake: upload an external sensor file or a scenario JSON
+from the browser **directly to Backblaze B2** with real-time progress tracking.
+The bytes never pass through the API, so uploads are not capped by Vercel's
+~4.5 MB Function payload limit — the same flow handles up to `max_file_size`
+(100 MB default) on local, Railway, and Vercel alike, and is a direct showcase of
+B2 as the storage layer. (The lake's primary ingest path is the simulation runner,
+which streams frames automatically — see [simulation-runner.md](simulation-runner.md).)
 
 ## Used By
 - UI: `/upload` page, upload form component

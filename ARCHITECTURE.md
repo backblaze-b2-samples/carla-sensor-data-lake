@@ -4,19 +4,20 @@
 ## Components
 
 - **apps/web/** — Next.js 16 frontend (App Router, Tailwind v4, shadcn/ui)
-  - Dashboard with stats, upload chart, recent uploads
-  - File upload with drag-and-drop, progress tracking
-  - File browser with preview, download, delete
+  - Scenarios: list, create/edit form, detail, run, delete (primary entity)
+  - Episodes: list and per-episode detail with a scoped sensor-frame browser
+  - Data-lake dashboard (episodes, frames, storage, sensor/weather/town breakdowns, ingest)
+  - Full-bucket file browser + manual upload
   - Dark mode via `next-themes`
 - **services/api/** — FastAPI backend (layered architecture)
-  - REST API for file upload, listing, deletion
-  - B2 S3 integration via boto3
-  - File metadata extraction (images, PDFs)
+  - REST API for scenario CRUD + run, episode read/delete, lake aggregation, files
+  - B2 S3 integration via boto3 (scenario JSON, per-frame streaming, presigned serving)
+  - CARLA simulation runner (lazy/guarded `import carla`; drives the real engine)
   - Health check endpoint with B2 connectivity verification
   - Structured JSON logging with request tracing
   - Prometheus-format metrics endpoint
 - **packages/shared/** — TypeScript type definitions
-  - Mirrors Pydantic models from the API
+  - Mirrors Pydantic models from the API (Scenario, Episode, LakeStats, …)
   - Consumed by `apps/web/` as workspace dependency
 
 ## Backend Layering
@@ -92,10 +93,11 @@ External provisioning and deployment remain explicit user-approved actions.
 
 ## Data Stores
 
-- **Backblaze B2** — object storage (S3-compatible API)
-  - All uploaded files stored in a single bucket
-  - File listing and metadata via S3 `list_objects_v2` / `head_object`
-  - No application database — B2 is the sole data store
+- **Backblaze B2** — object storage (S3-compatible API), the sole data store (no database)
+  - `scenarios/<id>.json` — scenario configs
+  - `episodes/<id>/metadata.json` — episode metadata + annotations
+  - `episodes/<id>/<sensor>/<frame>` — per-frame sensor data (rgb/segmentation `.png`, depth `.npy`, lidar `.ply`, vehicle_state `.json`)
+  - Listing/metadata via S3 `list_objects_v2` / `head_object`; serving via `generate_presigned_url`
 
 ## External Services
 
@@ -111,10 +113,13 @@ See [docs/SECURITY.md](docs/SECURITY.md) for full security documentation.
 
 ## Data Flows
 
-- **Upload**: Browser -> `POST /upload/presign` (API validates the declared file + signs a PUT) -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify` (API HEADs + Range-sniffs the stored object) -> response
-- **List**: Browser -> `GET /files` -> service calls repo -> returns file list
-- **Download**: Browser -> `GET /files/{key}/download` -> service validates key -> repo generates presigned URL -> browser downloads
-- **Delete**: Browser -> `DELETE /files/{key}` -> service validates key -> repo deletes from B2
+- **Scenario CRUD**: Browser -> `GET/POST/PUT/DELETE /scenarios[/{id}]` -> service -> `repo/scenario_store.py` reads/writes `scenarios/<id>.json`
+- **Run (capture)**: Browser -> `POST /scenarios/{id}/run` -> `service/carla_runner.py` (guarded `import carla`) drives the real CARLA server in synchronous mode -> each sensor callback -> `repo/frame_writer.py` streams a `PutObject` per frame -> `metadata.json` written at end. No `carla`/server -> `503` with an actionable message (nothing written)
+- **Episode browse**: Browser -> `GET /episodes` / `GET /episodes/{id}` -> service -> `repo/episode_store.py`; the scoped frame explorer reuses `GET /files?prefix=episodes/<id>/`
+- **Episode delete**: Browser -> `DELETE /episodes/{id}` -> service -> repo `DeleteObjects` scoped strictly to `episodes/<id>/`
+- **Dashboard**: Browser -> `GET /lake/stats` / `GET /lake/ingest` -> `service/lake.py` aggregates one `ListObjectsV2` under `episodes/`
+- **Serve/Download**: Browser -> `GET /files-by-key/preview|download` -> repo generates a presigned URL -> browser (or the PyTorch DataLoader) fetches from B2
+- **Upload (manual ingest)**: Browser -> `POST /upload/presign` -> Browser PUTs bytes **directly to B2** -> `POST /upload/verify`
 
 ## Observability
 
@@ -137,23 +142,26 @@ silently drift from FastAPI. `GET /metrics` is intentionally server-only.
 
 ## Canonical Files
 
-- Layered API handler: `services/api/app/runtime/upload.py`
-- Service orchestration: `services/api/app/service/upload.py`
-- B2 data access (repo layer): `services/api/app/repo/b2_client.py`
-- Pydantic models: `services/api/app/types/` (`files.py`, `upload.py`, `stats.py`, `formatting.py`)
+- Layered API handler: `services/api/app/runtime/scenarios.py`
+- Service orchestration: `services/api/app/service/scenarios.py`
+- Simulation engine (guarded): `services/api/app/service/carla_runner.py` + `service/sensors.py`
+- B2 data access (repo layer): `services/api/app/repo/scenario_store.py`, `repo/episode_store.py`, `repo/frame_writer.py`, `repo/b2_client.py`
+- Pydantic models: `services/api/app/types/` (`scenario.py`, `episode.py`, `lake.py`, `files.py`, …)
 - Config (pydantic-settings): `services/api/app/config/settings.py`
 - Structural tests: `services/api/tests/test_structure.py`
 - OpenAPI contract: `docs/api/openapi.json`
-- OpenAPI exporter: `services/api/scripts/export_openapi.py`
 - Frontend API client: `apps/web/src/lib/api-client.ts`
 - Shared TypeScript types: `packages/shared/src/types.ts`
 
 ## Core Features
 
-- [File Upload](docs/features/file-upload.md)
-- [File Browser](docs/features/file-browser.md)
+- [Scenarios](docs/features/scenarios.md)
+- [Simulation runner](docs/features/simulation-runner.md)
+- [Episode explorer](docs/features/episode-explorer.md)
+- [Dataset serving](docs/features/dataset-serving.md)
 - [Dashboard](docs/features/dashboard.md)
-- [Metadata Extraction](docs/features/metadata-extraction.md)
+- [File Browser](docs/features/file-browser.md)
+- [File Upload](docs/features/file-upload.md)
 
 ## References
 

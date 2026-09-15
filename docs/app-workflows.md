@@ -3,6 +3,31 @@
 
 User journeys inside the application.
 
+## Manage Scenarios
+
+- User navigates to `/scenarios` — a table of reusable CARLA capture configs
+- **New scenario** (`/scenarios/new`): a form with selectors for finite fields (town, weather preset, fps, traffic density) and a checkbox rig for sensors; free text for name/description; a numeric frame count. Each finite field shows its suggested safe default as guidance (Town10HD, ClearNoon, medium, 10 fps, 200 frames, full rig) rather than an autofill button
+- On submit the scenario is stored as `scenarios/<id>.json` in B2 and the user lands on its detail page
+- **Detail** (`/scenarios/[id]`): the full config, a **Run** action, an **Edit** link, a **Delete** action, and the episodes captured from this scenario
+- **Edit** (`/scenarios/[id]/edit`): the same form, pre-filled with the real scenario; saving replaces the config (created_at preserved)
+- **Delete**: a confirm dialog; deleting removes only the scenario config — captured episodes are untouched
+- See: [Scenarios](features/scenarios.md)
+
+## Run a Scenario (capture an episode)
+
+- On a scenario's detail page the user clicks **Run**
+- The API drives the real CARLA server in synchronous mode and streams every sensor frame to B2 as it is produced, then writes the episode `metadata.json`
+- On success: a toast reports the frame count and the user is taken to the new episode
+- If CARLA is not installed on the host or the server is unreachable, a clear "Run unavailable" toast explains the platform requirement — no fake capture is produced. This is expected on a machine without the CARLA server (e.g. the macOS dev machine); seed synthetic demo data with `scripts/seed_lake.py` to explore the browse/serve side
+- See: [Simulation runner](features/simulation-runner.md)
+
+## Explore an Episode
+
+- User navigates to `/episodes` — a table of captured episodes (scenario, town/weather, frames, size, source badge, status)
+- **Detail** (`/episodes/[id]`): metadata + bbox annotations, a frames-by-sensor breakdown, a "Serve this dataset" card (copy the PyTorch command, copy a sample frame's presigned URL), and a **sensor-frame browser scoped to `episodes/<id>/`** with per-frame preview/download
+- **Delete**: a confirm dialog; deleting removes every object under `episodes/<id>/` (prefix-scoped)
+- See: [Episode explorer](features/episode-explorer.md)
+
 ## Upload Files
 
 - User navigates to `/upload`
@@ -34,12 +59,13 @@ User journeys inside the application.
 ## View Dashboard
 
 - User navigates to `/` (home)
-- Three parallel API calls load: stats, recent files, upload activity — all served from one shared bucket listing that the API warms at startup
+- Parallel API calls load: lake stats, ingest activity, and recent episodes
 - While stats load, the page states it in words above the cards rather than showing silent skeletons
-- Stats cards show: total files, storage used, uploads today, total downloads
-- Upload chart shows last 7 days of upload activity as bar chart
-- Recent uploads table shows last 10 files with filename, size, type, date. Each filename links to that file's preview on `/files` — `/files` teaches "click a file to preview it", so the same gesture here has to answer rather than being inert text
-- Empty state: "No files uploaded yet" messages
+- Stats cards show: total episodes, total sensor frames, storage footprint, scenario count
+- The ingest chart shows frames written to B2 per day over the last 7 days
+- The breakdown card shows frames-by-sensor, episodes-by-weather, and episodes-by-town as proportional bars
+- The recent-episodes table shows the 5 newest episodes; each row links to its episode detail
+- Empty state: "No episodes yet" / "No ingest yet" pointing at Run or the seed script
 - See: [Dashboard](features/dashboard.md)
 
 ## Change Preferences

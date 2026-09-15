@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { StatsCards } from "@/components/dashboard/stats-cards";
-import { RecentUploadsTable } from "@/components/dashboard/recent-uploads-table";
-import { UploadChart } from "@/components/dashboard/upload-chart";
+import { LakeStatsCards } from "@/components/dashboard/lake-stats-cards";
+import { IngestChart } from "@/components/dashboard/ingest-chart";
+import { RecentEpisodes } from "@/components/dashboard/recent-episodes";
+import { LakeBreakdown } from "@/components/dashboard/lake-breakdown";
 
 export default function DashboardPage() {
   return (
@@ -13,25 +14,26 @@ export default function DashboardPage() {
         <div>
           <h1 className="page-title">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Overview of your Backblaze B2 storage activity.
+            Your synthetic autonomous-driving data lake on Backblaze B2.
           </p>
         </div>
         <Button asChild size="sm" className="h-8">
-          <Link href="/upload">
-            <Upload className="h-3.5 w-3.5" />
-            Upload files
+          <Link href="/scenarios/new">
+            <Plus className="h-3.5 w-3.5" />
+            New scenario
           </Link>
         </Button>
       </div>
-      <StatsCards />
+      <LakeStatsCards />
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="animate-fade-in-up stagger-3">
-          <UploadChart />
+          <IngestChart />
         </div>
         <div className="animate-fade-in-up stagger-4">
-          <RecentUploadsTable />
+          <RecentEpisodes />
         </div>
       </div>
+      <LakeBreakdown />
     </div>
   );
 }

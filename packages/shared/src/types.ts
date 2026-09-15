@@ -71,3 +71,102 @@ export interface UploadStats {
   uploads_today: number;
   total_downloads: number;
 }
+
+// --- CARLA Sensor Data Lake ---
+
+/** Create/edit payload for a Scenario (the primary entity). */
+export interface ScenarioInput {
+  name: string;
+  description: string;
+  town: string;
+  weather: string;
+  traffic_density: string;
+  fps: number;
+  frame_count: number;
+  sensors: string[];
+}
+
+/** A stored Scenario: the input config plus server-assigned identity. */
+export interface Scenario extends ScenarioInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BBoxAnnotation {
+  frame: number;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface EpisodeMetadata {
+  id: string;
+  scenario_id: string | null;
+  scenario_name: string | null;
+  town: string;
+  weather: string;
+  traffic_density: string;
+  fps: number;
+  requested_frames: number;
+  captured_frames: number;
+  sensors: string[];
+  frames_by_sensor: Record<string, number>;
+  status: string;
+  /** "carla" (a real run) or "synthetic-seed" (demo data). */
+  capture_source: string;
+  error: string | null;
+  annotations: BBoxAnnotation[];
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface EpisodeSummary {
+  id: string;
+  scenario_id: string | null;
+  scenario_name: string | null;
+  town: string;
+  weather: string;
+  status: string;
+  capture_source: string;
+  captured_frames: number;
+  total_objects: number;
+  size_bytes: number;
+  size_human: string;
+  created_at: string;
+}
+
+export interface EpisodeDetail {
+  metadata: EpisodeMetadata;
+  total_objects: number;
+  size_bytes: number;
+  size_human: string;
+}
+
+export interface SensorCount {
+  sensor: string;
+  frames: number;
+}
+
+export interface GroupCount {
+  label: string;
+  episodes: number;
+}
+
+export interface DailyFrameCount {
+  date: string;
+  frames: number;
+}
+
+export interface LakeStats {
+  total_episodes: number;
+  total_frames: number;
+  total_scenarios: number;
+  total_size_bytes: number;
+  total_size_human: string;
+  frames_by_sensor: SensorCount[];
+  episodes_by_weather: GroupCount[];
+  episodes_by_town: GroupCount[];
+}

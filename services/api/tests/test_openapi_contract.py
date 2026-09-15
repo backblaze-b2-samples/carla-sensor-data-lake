@@ -34,11 +34,13 @@ def test_openapi_metadata_uses_canonical_local_api_identity():
     schema = app.openapi()
 
     assert schema["info"] == {
-        "title": "Vibe Coding Starter Kit API",
+        "title": "CARLA Sensor Data Lake API",
         "description": (
-            "Local API for the Vibe Coding Starter Kit template, providing file "
-            "upload and management backed by Backblaze B2. This contract "
-            "documents the template's local API, not a hosted public endpoint."
+            "Local API for CARLA Sensor Data Lake: manage CARLA scenario configs, "
+            "drive the simulator, and browse and serve the resulting multi-sensor "
+            "driving datasets (RGB, segmentation, depth, LiDAR, telemetry) stored "
+            "in Backblaze B2 over the S3-compatible API. This contract documents "
+            "the app's local API, not a hosted public endpoint."
         ),
         "version": "0.1.0",
     }

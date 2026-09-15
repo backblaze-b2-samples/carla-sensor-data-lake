@@ -1,4 +1,4 @@
-import type { FileMetadata } from "@vibe-coding-starter-kit/shared";
+import type { FileMetadata } from "@carla-sensor-data-lake/shared";
 
 export interface TreeFolder {
   type: "folder";
@@ -19,8 +19,14 @@ export type TreeNode = TreeFolder | TreeFile;
  * Build a tree structure from a flat list of S3 keys.
  * e.g. ["uploads/a.jpg", "uploads/photos/b.png", "docs/c.pdf"]
  * becomes a nested folder/file hierarchy.
+ *
+ * `stripPrefix` roots the tree below a fixed prefix so a scoped explorer (e.g.
+ * the per-episode frame browser locked to `episodes/<id>/`) shows relative paths
+ * (`rgb/000000.png`) instead of the full key. Folder/expansion paths become
+ * relative too; the file `data` always keeps the real, full key so downloads,
+ * previews, and deletes still address the actual object.
  */
-export function buildFileTree(files: FileMetadata[]): TreeNode[] {
+export function buildFileTree(files: FileMetadata[], stripPrefix = ""): TreeNode[] {
   const root: TreeFolder = {
     type: "folder",
     name: "",
@@ -29,7 +35,11 @@ export function buildFileTree(files: FileMetadata[]): TreeNode[] {
   };
 
   for (const file of files) {
-    const parts = file.key.split("/");
+    const relKey =
+      stripPrefix && file.key.startsWith(stripPrefix)
+        ? file.key.slice(stripPrefix.length)
+        : file.key;
+    const parts = relKey.split("/");
     let current = root;
 
     // Walk/create folders for all parts except the last (filename)
