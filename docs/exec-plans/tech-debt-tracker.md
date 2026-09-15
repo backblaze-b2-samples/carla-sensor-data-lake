@@ -75,3 +75,9 @@ Low-severity polish, left for a follow-up; none blocks the core flow.
 | Custom `FileNotFoundError` shadowed the built-in | Renamed to `FileNotFoundServiceError` |
 | Dropzone accepted any file type client-side | `accept` allow-list mirroring backend `ALLOWED_TYPES` (tested for drift) |
 | No test harness for feature specs | pytest suite across upload, files, activity, errors, validation, rate limit, pagination |
+
+## 2026-09-15 — verify
+
+- /scenarios/[id] Run flow — navigating away during an in-flight CARLA-run request shows no outcome toast on return; the orphaned loading toast is correctly dismissed on unmount, but no background-result notification is shown → add a mutation-cache-level or persisted notification so a returning user learns the run outcome (.local/verify/B/11-run-terminal-state.png)
+- /episodes/[id] frame browser — sensor frames render as a file-tree of filename rows with type icons, no image thumbnails in the list; the preview dialog paints the real frame on click → a thumbnail grid would speed visual browsing of many frames (.local/verify/C/13-episode-frame-grid.png)
+- /scenarios/new form — React hydration-mismatch dev warning on the radio/checkbox controls (Radix/shadcn style-attribute ordering diff) surfaces a Next dev-overlay "1 Issue" badge in dev mode; harmless in production but worth silencing (.local/verify/A/05-scenario-new-form-filled.png)

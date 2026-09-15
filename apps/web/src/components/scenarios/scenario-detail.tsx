@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +50,23 @@ export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
   const { data: allEpisodes = [] } = useEpisodes();
   const episodes = allEpisodes.filter((e) => e.scenario_id === scenarioId);
 
+  // TanStack Query v5's per-`mutate()`-call `onSuccess`/`onError` callbacks are
+  // best-effort: they're delivered through this component's mutation
+  // observer, which React tears down on unmount, so they never fire once the
+  // user has navigated away. That orphans the `toast.loading(...)` below
+  // forever (it has no auto-timeout). A `useEffect` cleanup runs unconditionally
+  // on unmount regardless of mutation state, so it's the one place guaranteed
+  // to still be able to dismiss that specific toast id.
+  const activeRunToastIdRef = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeRunToastIdRef.current !== null) {
+        toast.dismiss(activeRunToastIdRef.current);
+      }
+    };
+  }, []);
+
   if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
   }
@@ -61,8 +79,10 @@ export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
 
   const handleRun = () => {
     const toastId = toast.loading("Requesting a CARLA run...");
+    activeRunToastIdRef.current = toastId;
     runMutation.mutate(scenarioId, {
       onSuccess: (episode) => {
+        activeRunToastIdRef.current = null;
         toast.success(`Episode ${episode.id} captured`, {
           id: toastId,
           description: `${episode.captured_frames} frames streamed to B2.`,
@@ -70,6 +90,7 @@ export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
         router.push(`/episodes/${episode.id}`);
       },
       onError: (err) => {
+        activeRunToastIdRef.current = null;
         const detail =
           err instanceof ApiError ? err.message : "Failed to start the run";
         // A 503 here is the documented "CARLA not on this host" case, not a bug.
