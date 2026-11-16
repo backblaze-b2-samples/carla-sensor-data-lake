@@ -14,4 +14,4 @@
 # The lake's manage/browse/serve side needs none of this — it runs on any host
 # against data already in B2.
 carla==0.9.15
-numpy>=1.23,<2
+numpy>=2.5.3,<3
